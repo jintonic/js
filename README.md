@@ -1,20 +1,31 @@
-Create the project:
+## Create the project
 
 ```sh
 docker compose run --rm --service-ports sh
-npm init # create package.json based on your answers to a few prompted questions
-npm i three # add three.js to node_modules, dependent list in package.json, create package-lock.json
-npm i --save-dev vite # add vite to node_modules, devDependent list in package.json, update package-lock.json
+# create package.json based on your answers to a few prompted questions
+npm init
+# install three to node_modules,
+# add it to dependent list in package.json,
+# create package-lock.json
+npm i three
+# install vite to node_modules,
+# add it to devDependent list in package.json (option -D),
+# update package-lock.json
+npm i -D vite
+# no need to save installed modules
+# according to https://docs.npmjs.com/cli/v8/commands/npm-install,
+# if NODE_ENV is not set to production, both three and vite will be installed in node_modules
+# otherwise, only three will be installed there
 echo "node_modules" > .gitignore
 ```
 
-Then add [index.html](index.html), [main.js](main.js), and commit and push all to github.
+Then add [index.html](index.html), [js/main.js](js/main.js), and commit and push all to github.
 
-Run the project:
+## Run the project
 
 ```sh
 docker compose run --rm --service-ports sh
-npx vite --host # run vite to serve the webpage, install vite if this is the first time
+# run vite to serve the webpage
+# --host: set ip address to `0.0.0.0`, which lets the server listen on all network interfaces
+npx vite --host
 ```
-
-`--host` is used to specify the ip address to `0.0.0.0`, which lets the server to listen to any connection.
