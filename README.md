@@ -28,4 +28,6 @@ docker compose run --rm --service-ports sh
 # run vite to serve the webpage
 # --host: set ip address to `0.0.0.0`, which lets the server listen on all network interfaces
 npx vite --host
+# or the following (the dev script is defined in package.json)
+npm run dev
 ```
