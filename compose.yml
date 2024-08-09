@@ -4,8 +4,6 @@ services:
     user: node
     working_dir: /home/node/app
     command: bash
-    environment:
-      - NODE_ENV=production
     volumes:
       - .:/home/node/app
     ports:
