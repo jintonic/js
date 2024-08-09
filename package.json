@@ -4,7 +4,7 @@
   "description": "test project",
   "main": "index.html",
   "scripts": {
-    "test": "vite build"
+    "dev": "vite --host"
   },
   "repository": {
     "type": "git",
