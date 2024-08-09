@@ -1,0 +1,28 @@
+{
+  "name": "test",
+  "version": "1.0.0",
+  "description": "test project",
+  "main": "index.html",
+  "scripts": {
+    "test": "vite build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jintonic/js.git"
+  },
+  "keywords": [
+    "JS"
+  ],
+  "author": "Jintonic",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jintonic/js/issues"
+  },
+  "homepage": "https://github.com/jintonic/js#readme",
+  "dependencies": {
+    "three": "^0.167.1"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}

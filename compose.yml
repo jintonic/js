@@ -1,0 +1,12 @@
+services:
+  sh: # docker compose run --rm --service-ports sh
+    image: node
+    user: node
+    working_dir: /home/node/app
+    command: bash
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - .:/home/node/app
+    ports:
+      - 5173:5173
