@@ -9,7 +9,7 @@ import { DragControls } from 'three/addons/controls/DragControls.js';
 const scene = new THREE.Scene();
 scene.background = new THREE.Color( 0xaaaaaa );
 
-const geo1 = new THREE.BoxGeometry( 1, 1, 1 );
+const geo1 = new THREE.BoxGeometry( 2/2, 1/2, 1/2 );
 const mat1 = new THREE.MeshLambertMaterial( { color: 0x00ab12 } );
 const cube = new THREE.Mesh( geo1, mat1 );
 cube.receiveShadow = true;
@@ -19,16 +19,25 @@ scene.add( cube );
 // use Shape and ExtrudeGeometry to create a solid pie
 var pie = new THREE.Shape();
 // https://threejs.org/docs/#api/en/extras/core/Path.absarc
-pie.absarc(0, 0, 1, 0, Math.PI/3, false);
+const phi0=Math.PI/3; const dPhi=Math.PI/3;
+const x0=0, y0=0, z0=0, rMin=0.5, rMax=1, dZ=2;
+pie.absarc(x0, y0, rMax, phi0, phi0+dPhi, false);
 pie.lineTo(0, 0);
 // https://threejs.org/docs/#api/en/geometries/ExtrudeGeometry
-const settings = { bevelEnabled: false };
-const geo2 = new THREE.ExtrudeGeometry( pie, settings ); 
-const mat2 = new THREE.MeshLambertMaterial( {color: 0x00ffff} ); 
-const tube = new THREE.Mesh( geo2, mat2 );
+const settings = { depth: 2*dZ, bevelEnabled: false };
+const outerTubeGeo = new THREE.ExtrudeGeometry( pie, settings ); 
+outerTubeGeo.translate(x0,y0,z0-dZ);
+
+const innerTubeGeo = new THREE.CylinderGeometry( rMin, rMin, 2*dZ );
+innerTubeGeo.rotateX(Math.PI/2);
+innerTubeGeo.translate(x0,y0,z0);
+
+const innerTubeCSG = CSG.fromGeometry(innerTubeGeo);
+const outerTubeCSG = CSG.fromGeometry(outerTubeGeo);
+const tubeCSG = outerTubeCSG.subtract(innerTubeCSG);
+const tube = CSG.toMesh(tubeCSG, new THREE.Matrix4(), mat1);
 tube.receiveShadow = true;
 scene.add(tube);
-scene.add(new THREE.BoxHelper(tube));
 
 const gridHelper = new THREE.GridHelper( 10, 10 );
 scene.add( gridHelper );
