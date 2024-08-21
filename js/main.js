@@ -65,10 +65,28 @@ document.body.appendChild( renderer.domElement );
 
 // https://discourse.threejs.org/t/control-camera-using-mouse-click-and-drag/39612
 // https://threejs.org/docs/#examples/en/controls/MapControls
-let controls = new MapControls( camera, renderer.domElement );
-// https://threejs.org/docs/#examples/en/controls/DragControls
-const drag = new DragControls( [cube, tube], camera, renderer.domElement );
+let controls = new MapControls(camera, renderer.domElement);
+controls.enablePan = true; // Allow panning
+controls.enableRotate = true; // Disable camera rotation
+controls.enableZoom = true; // Allow zooming
 
+// https://threejs.org/docs/#examples/en/controls/DragControls
+const drag = new DragControls([cube, tube], camera, renderer.domElement);
+
+// Disable MapControls while dragging objects
+drag.addEventListener('dragstart', function () {
+    controls.enabled = false;
+});
+
+// Enable MapControls after dragging objects
+drag.addEventListener('dragend', function () {
+    controls.enabled = true;
+});
+
+// Update BoxHelpers on drag
+drag.addEventListener('drag', function () {
+    cubeHelper.update();
+});
 function animate() {
   renderer.render( scene, camera );
 }
