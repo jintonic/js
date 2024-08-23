@@ -45,7 +45,7 @@ const tubeHelper = new THREE.BoxHelper(tube, 0xffff00);
 scene.add(tubeHelper);
 
 // Creating the hollow cylinder using CSG
-const cyr1 = 0.5, cyr2 = 0.5, cyh = 0.5, cysegm = 60;
+const cyr1 = 0.8, cyr2 = 0.3, cyh = 2, cysegm = 60;
 const outerCylinderGeo = new THREE.CylinderGeometry(cyr1, cyr2, cyh, cysegm);
 const innerCylinderGeo = new THREE.CylinderGeometry(cyr1 / 1.5, cyr2 / 1.5, cyh, cysegm);
 
@@ -54,7 +54,6 @@ const outerCylinderCSG = CSG.fromGeometry(outerCylinderGeo);
 const innerCylinderCSG = CSG.fromGeometry(innerCylinderGeo);
 const hollowCylinderCSG = outerCylinderCSG.subtract(innerCylinderCSG);
 
-const mat3 = new THREE.MeshLambertMaterial({ color: 0x0000ff });
 const cylinder = CSG.toMesh(hollowCylinderCSG, new THREE.Matrix4(), mat1);
 cylinder.receiveShadow = true;
 cylinder.position.set(0, 0, 3);
@@ -62,6 +61,33 @@ scene.add(cylinder);
 
 const cylinderHelper = new THREE.BoxHelper(cylinder, 0xffff00);
 scene.add(cylinderHelper);
+
+// Create the sphere geometry
+const sr1 = 1, sr2 = 32, sr3 = 32;
+const bigsphereGeo = new THREE.SphereGeometry(sr1, sr2, sr3);
+
+// Create a box that will cut the sphere in half
+const boxGeo = new THREE.BoxGeometry(2, 2, 1); // The height (Z-dimension) is set to 1 to create a hemisphere
+boxGeo.translate(0, 0, 0.5); // Translate the box to overlap with the lower half of the sphere
+
+// Convert geometries to CSG
+const sphereCSG = CSG.fromGeometry(bigsphereGeo);
+const boxCSG = CSG.fromGeometry(boxGeo);
+
+// Subtract the box from the sphere to create a hemisphere
+const resultCSG = sphereCSG.subtract(boxCSG);
+
+// Convert the result CSG back to a THREE.Mesh
+const hemisphere = CSG.toMesh(resultCSG, new THREE.Matrix4(), mat1);
+hemisphere.receiveShadow = true;
+hemisphere.position.set(3, 0, 0);
+
+// Add the resulting mesh to the scene
+scene.add(hemisphere);
+
+// Optional: Add a BoxHelper to visualize the boundaries
+const hemisphereHelper = new THREE.BoxHelper(hemisphere, 0xffff00);
+scene.add(hemisphereHelper);
 
 // Adding grid and axes helpers
 const gridHelper = new THREE.GridHelper( 10, 10 );
@@ -99,7 +125,7 @@ controls.enableRotate = true; // Disable camera rotation
 controls.enableZoom = true; // Allow zooming
 
 // https://threejs.org/docs/#examples/en/controls/DragControls
-const drag = new DragControls([cube, tube, cylinder], camera, renderer.domElement);
+const drag = new DragControls([cube, tube, cylinder, hemisphere], camera, renderer.domElement);
 
 // Disable MapControls while dragging objects
 drag.addEventListener('dragstart', function () {
@@ -116,6 +142,7 @@ drag.addEventListener('drag', function () {
 
     tubeHelper.update();
     cylinderHelper.update();
+    hemisphereHelper.update();
 });
 
 // Animation loop
