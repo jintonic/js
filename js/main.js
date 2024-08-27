@@ -44,50 +44,61 @@ scene.add(tube);
 const tubeHelper = new THREE.BoxHelper(tube, 0xffff00);
 scene.add(tubeHelper);
 
-// Creating the hollow cylinder using CSG
-const cyr1 = 0.8, cyr2 = 0.3, cyh = 2, cysegm = 60;
-const outerCylinderGeo = new THREE.CylinderGeometry(cyr1, cyr2, cyh, cysegm);
-const innerCylinderGeo = new THREE.CylinderGeometry(cyr1 / 1.5, cyr2 / 1.5, cyh, cysegm);
+// Define parameters for the cone (formerly the cylinder)
+const pRmax1 = 0.8, pRmin2 = 0.3, pDz = 2, openend=false, pSPhi = 0, pDPhi = Math.PI *2
+const outerConeGeo = new THREE.CylinderGeometry(pRmin2, pRmax1,  pDz, 60, 1, openend, pSPhi, pDPhi);
+const innerConeGeo = new THREE.CylinderGeometry(pRmin2 / 1.5, pRmax1 / 1.5,  pDz, 60, 1, openend, pSPhi, pDPhi);
 
-// Use CSG to create a hollow cylinder
-const outerCylinderCSG = CSG.fromGeometry(outerCylinderGeo);
-const innerCylinderCSG = CSG.fromGeometry(innerCylinderGeo);
-const hollowCylinderCSG = outerCylinderCSG.subtract(innerCylinderCSG);
+// Use CSG to create a hollow cone
+const outerConeCSG = CSG.fromGeometry(outerConeGeo);
+const innerConeCSG = CSG.fromGeometry(innerConeGeo);
+const hollowConeCSG = outerConeCSG.subtract(innerConeCSG);
 
-const cylinder = CSG.toMesh(hollowCylinderCSG, new THREE.Matrix4(), mat1);
-cylinder.receiveShadow = true;
-cylinder.position.set(0, 0, 3);
-scene.add(cylinder);
+const cone = CSG.toMesh(hollowConeCSG, new THREE.Matrix4(), mat1);
+cone.receiveShadow = true;
+cone.position.set(0, 0, 3);
+scene.add(cone);
 
-const cylinderHelper = new THREE.BoxHelper(cylinder, 0xffff00);
-scene.add(cylinderHelper);
+const coneHelper = new THREE.BoxHelper(cone, 0xffff00);
+scene.add(coneHelper);
 
 // Create the sphere geometry
-const sr1 = 1, sr2 = 32, sr3 = 32;
-const bigsphereGeo = new THREE.SphereGeometry(sr1, sr2, sr3);
+// Define parameters
+const innerRadius = 0.5;  
+const outerRadius = 1;   
+const startPhi = 0;       
+const deltaPhi = Math.PI*2;  
+const startTheta = 0;      
+const deltaTheta = Math.PI*2; 
+const radius = (innerRadius + outerRadius) / 2; 
+const segmentsWidth = 32;
+const segmentsHeight = 32;
 
-// Create a box that will cut the sphere in half
-const boxGeo = new THREE.BoxGeometry(2, 2, 1); // The height (Z-dimension) is set to 1 to create a hemisphere
-boxGeo.translate(0, 0, 0.5); // Translate the box to overlap with the lower half of the sphere
+// Create the sphere geometry with the desired segment parameters
+const sphereGeo = new THREE.SphereGeometry(radius, segmentsWidth, segmentsHeight, startPhi, deltaPhi, startTheta, deltaTheta);
+
+// Create a box that will cut the sphere segment if needed
+const boxGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5); // Adjust dimensions as needed
+boxGeo.translate(0.5, 0.5, 0); // Translate the box to overlap with the lower part of the sphere segment if necessary
 
 // Convert geometries to CSG
-const sphereCSG = CSG.fromGeometry(bigsphereGeo);
+const sphereCSG = CSG.fromGeometry(sphereGeo);
 const boxCSG = CSG.fromGeometry(boxGeo);
 
-// Subtract the box from the sphere to create a hemisphere
+// Subtract the box from the sphere to create a hemisphere if needed
 const resultCSG = sphereCSG.subtract(boxCSG);
 
 // Convert the result CSG back to a THREE.Mesh
-const hemisphere = CSG.toMesh(resultCSG, new THREE.Matrix4(), mat1);
-hemisphere.receiveShadow = true;
-hemisphere.position.set(3, 0, 0);
+const sphere = CSG.toMesh(resultCSG, new THREE.Matrix4(), mat1);
+sphere.receiveShadow = true;
+sphere.position.set(3, 0, 0);
 
 // Add the resulting mesh to the scene
-scene.add(hemisphere);
+scene.add(sphere);
 
 // Optional: Add a BoxHelper to visualize the boundaries
-const hemisphereHelper = new THREE.BoxHelper(hemisphere, 0xffff00);
-scene.add(hemisphereHelper);
+const sphereHelper = new THREE.BoxHelper(sphere, 0xffff00);
+scene.add(sphereHelper);
 
 // Adding grid and axes helpers
 const gridHelper = new THREE.GridHelper( 10, 10 );
@@ -125,7 +136,7 @@ controls.enableRotate = true; // Disable camera rotation
 controls.enableZoom = true; // Allow zooming
 
 // https://threejs.org/docs/#examples/en/controls/DragControls
-const drag = new DragControls([cube, tube, cylinder, hemisphere], camera, renderer.domElement);
+const drag = new DragControls([cube, tube, cone, sphere], camera, renderer.domElement);
 
 // Disable MapControls while dragging objects
 drag.addEventListener('dragstart', function () {
@@ -141,8 +152,8 @@ drag.addEventListener('dragend', function () {
 drag.addEventListener('drag', function () {
 
     tubeHelper.update();
-    cylinderHelper.update();
-    hemisphereHelper.update();
+    coneHelper.update();
+    sphereHelper.update();
 });
 
 // Animation loop
