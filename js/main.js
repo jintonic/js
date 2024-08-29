@@ -26,8 +26,8 @@ const x0=0, y0=0, z0=0, rMin=0.5, rMax=1, dZ=1;
 pie.absarc(x0, y0, rMax, phi0, phi0+dPhi, false);
 pie.lineTo(0, 0);
 // https://threejs.org/docs/#api/en/geometries/ExtrudeGeometry
-const settings = { depth: 2*dZ, bevelEnabled: false };
-const outerTubeGeo = new THREE.ExtrudeGeometry( pie, settings ); 
+const settingss = { depth: 2*dZ, bevelEnabled: false };
+const outerTubeGeo = new THREE.ExtrudeGeometry( pie, settingss ); 
 outerTubeGeo.translate(x0,y0,z0-dZ);
 
 const innerTubeGeo = new THREE.CylinderGeometry( rMin, rMin, 2*dZ );
@@ -39,22 +39,29 @@ const outerTubeCSG = CSG.fromGeometry(outerTubeGeo);
 const tubeCSG = outerTubeCSG.subtract(innerTubeCSG);
 const tube = CSG.toMesh(tubeCSG, new THREE.Matrix4(), mat1);
 tube.receiveShadow = true;
+tube.position.set(-3,0,0)
 scene.add(tube);
 
 const tubeHelper = new THREE.BoxHelper(tube, 0xffff00);
 scene.add(tubeHelper);
 
 // Define parameters for the cone (formerly the cylinder)
-const pRmax1 = 0.8, pRmin2 = 0.3, pDz = 2, openend=false, pSPhi = 0, pDPhi = Math.PI *2
-const outerConeGeo = new THREE.CylinderGeometry(pRmin2, pRmax1,  pDz, 60, 1, openend, pSPhi, pDPhi);
-const innerConeGeo = new THREE.CylinderGeometry(pRmin2 / 1.5, pRmax1 / 1.5,  pDz, 60, 1, openend, pSPhi, pDPhi);
+const pRmaxbottom = 1, pRmintop = 0.5, pDzheight = 2
+const outerConeGeo = new THREE.CylinderGeometry(pRmintop, pRmaxbottom,  pDzheight);
+const innerConeGeo = new THREE.CylinderGeometry(pRmintop / 1.5, pRmaxbottom / 1.5,  pDzheight);
 
 // Use CSG to create a hollow cone
 const outerConeCSG = CSG.fromGeometry(outerConeGeo);
 const innerConeCSG = CSG.fromGeometry(innerConeGeo);
 const hollowConeCSG = outerConeCSG.subtract(innerConeCSG);
 
-const cone = CSG.toMesh(hollowConeCSG, new THREE.Matrix4(), mat1);
+const box1geo= new THREE.BoxGeometry(pRmaxbottom*2,pDzheight,pRmaxbottom*2)
+box1geo.translate(0,0,1)
+
+const boxcsg= CSG.fromGeometry(box1geo)
+const hollowboxcsg= hollowConeCSG.subtract(boxcsg)
+
+const cone = CSG.toMesh(hollowboxcsg, new THREE.Matrix4(), mat1);
 cone.receiveShadow = true;
 cone.position.set(0, 0, 3);
 scene.add(cone);
@@ -62,34 +69,35 @@ scene.add(cone);
 const coneHelper = new THREE.BoxHelper(cone, 0xffff00);
 scene.add(coneHelper);
 
-// Create the sphere geometry
-// Define parameters
-const innerRadius = 0.5;  
-const outerRadius = 1;   
+
+// Sphere pie shape
+const radius = 1;   
 const startPhi = 0;       
-const deltaPhi = Math.PI*2;  
-const startTheta = 0;      
-const deltaTheta = Math.PI*2; 
-const radius = (innerRadius + outerRadius) / 2; 
-const segmentsWidth = 32;
-const segmentsHeight = 32;
+const deltaPhi = Math.PI/2;  
 
-// Create the sphere geometry with the desired segment parameters
-const sphereGeo = new THREE.SphereGeometry(radius, segmentsWidth, segmentsHeight, startPhi, deltaPhi, startTheta, deltaTheta);
+// Create the pie shape with a larger radius to cut through the entire sphere
+const pie2 = new THREE.Shape();
+pie2.absarc(0, 0, radius, startPhi, startPhi+deltaPhi , false);
+pie2.lineTo(0, 0);
+const settings = { depth: 2*radius, bevelEnabled: false }; //depth is the length of pie
+const pieGeometry = new THREE.ExtrudeGeometry(pie2, settings);
+pieGeometry.translate(0, 0, 0-radius);
 
-// Create a box that will cut the sphere segment if needed
-const boxGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5); // Adjust dimensions as needed
-boxGeo.translate(0.5, 0.5, 0); // Translate the box to overlap with the lower part of the sphere segment if necessary
 
-// Convert geometries to CSG
+const sphereGeo = new THREE.SphereGeometry(radius);
+const innersphereGeo= new THREE.SphereGeometry(radius/1.5);
+
+
+//Everthing into CSG
+const pieCSG = CSG.fromGeometry(pieGeometry);
 const sphereCSG = CSG.fromGeometry(sphereGeo);
-const boxCSG = CSG.fromGeometry(boxGeo);
-
-// Subtract the box from the sphere to create a hemisphere if needed
-const resultCSG = sphereCSG.subtract(boxCSG);
+const innersphereCSG=CSG.fromGeometry(innersphereGeo)
+const resultCSG = sphereCSG.intersect(pieCSG); //csg for pie and sphere
+const finalcsg=resultCSG.subtract(innersphereCSG)  //csg for innersphere and outersphere
 
 // Convert the result CSG back to a THREE.Mesh
-const sphere = CSG.toMesh(resultCSG, new THREE.Matrix4(), mat1);
+const sphere = CSG.toMesh(finalcsg, new THREE.Matrix4(), mat1);
+sphere.rotation.y=Math.PI/2;
 sphere.receiveShadow = true;
 sphere.position.set(3, 0, 0);
 
@@ -99,6 +107,57 @@ scene.add(sphere);
 // Optional: Add a BoxHelper to visualize the boundaries
 const sphereHelper = new THREE.BoxHelper(sphere, 0xffff00);
 scene.add(sphereHelper);
+
+
+/// Create the pie shape with a larger radius to cut through the entire sphere
+const pieshape = new THREE.Shape();
+const pieradius = 2;
+const piestartphi = 0;
+const piedeltaphi = Math.PI / 2;
+pieshape.absarc(0, 0, pieradius, piestartphi, piestartphi + piedeltaphi, false);
+pieshape.lineTo(0, 0);
+
+// Increase the extrusion depth to ensure the pie cuts through the sphere
+const extrusionsettings = { depth: 2 * pieradius, bevelEnabled: false };
+const piegeometry = new THREE.ExtrudeGeometry(pieshape, extrusionsettings);
+piegeometry.translate(0, 0, -pieradius);
+const rotationmatrix = new THREE.Matrix4();
+rotationmatrix.makeRotationFromEuler(new THREE.Euler(Math.PI / 2, Math.PI, 3)); // Rotate 90 degrees around Y and 180 degrees around X
+piegeometry.applyMatrix4(rotationmatrix);
+
+//Adding cone using cylinder concept
+const conegeometry = new THREE.CylinderGeometry(0.001, pieradius, pieradius);
+conegeometry.translate(0, -pieradius/2, 0);
+const conerotationmatrix = new THREE.Matrix4();
+conerotationmatrix.makeRotationX(Math.PI);
+conegeometry.applyMatrix4(conerotationmatrix);
+
+const spheregeometry = new THREE.SphereGeometry(pieradius);
+const innerspheregeometry = new THREE.SphereGeometry(pieradius / 1.5);
+
+// Everything into CSG
+const piecsg = CSG.fromGeometry(piegeometry);
+const spherecsg = CSG.fromGeometry(spheregeometry);
+const innerspherecsg = CSG.fromGeometry(innerspheregeometry);
+const conecsg = CSG.fromGeometry(conegeometry);
+
+// Creating mesh
+const intersectedcsg = spherecsg.intersect(piecsg); // CSG for pie and sphere
+const finalmeshcsg = intersectedcsg.subtract(innerspherecsg); // CSG for final result
+const lastcsg = finalmeshcsg.intersect(conecsg); // CSG for pie, sphere, and cone
+
+// Convert the result CSG back to a THREE.Mesh
+const coneremain = CSG.toMesh(lastcsg, new THREE.Matrix4(), mat1);
+coneremain.receiveShadow = true;
+coneremain.position.set(0, 0, 0);
+
+// Add the resulting mesh to the scene
+scene.add(coneremain);
+
+// Optional: Add a BoxHelper to visualize the boundaries
+const coneremainHelper = new THREE.BoxHelper(coneremain, 0xffff00);
+scene.add(coneremainHelper);
+
 
 // Adding grid and axes helpers
 const gridHelper = new THREE.GridHelper( 10, 10 );
@@ -136,7 +195,7 @@ controls.enableRotate = true; // Disable camera rotation
 controls.enableZoom = true; // Allow zooming
 
 // https://threejs.org/docs/#examples/en/controls/DragControls
-const drag = new DragControls([cube, tube, cone, sphere], camera, renderer.domElement);
+const drag = new DragControls([cube, tube, cone, sphere, coneremain], camera, renderer.domElement);
 
 // Disable MapControls while dragging objects
 drag.addEventListener('dragstart', function () {
@@ -154,6 +213,7 @@ drag.addEventListener('drag', function () {
     tubeHelper.update();
     coneHelper.update();
     sphereHelper.update();
+    coneremainHelper.update();
 });
 
 // Animation loop
