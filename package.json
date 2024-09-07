@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "description": "test project",
   "main": "index.html",
+  "type": "module",
   "scripts": {
-    "dev": "vite --host"
+    "dev": "vite --host",
+    "pre": "vite preview --host",
+    "build": "vite build"
   },
   "repository": {
     "type": "git",
