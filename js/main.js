@@ -14,7 +14,7 @@ const geo1 = new THREE.BoxGeometry( pX*2, pY*2, pZ*2 );
 const mat1 = new THREE.MeshLambertMaterial( { color: 0x00ab12 } );
 const cube = new THREE.Mesh( geo1, mat1 );
 cube.receiveShadow = true;
-cube.position.set(0, 0, -3);
+cube.position.set(-3, 0, -3);
 scene.add( cube );
 
 
@@ -22,7 +22,7 @@ scene.add( cube );
 var pie = new THREE.Shape();
 // https://threejs.org/docs/#api/en/extras/core/Path.absarc
 var phi0=Math.PI/3; var dPhi=Math.PI/3;
-var x0=0, y0=0, z0=0, pRMin=0.5, pRMax=0.5, pDz=1;
+var x0=0, y0=0, z0=0, pRMin=0.5, pRMax=1, pDz=1;
 pie.absarc(x0, y0, pRMax, phi0, phi0+dPhi, false);
 pie.lineTo(0, 0);
 // https://threejs.org/docs/#api/en/geometries/ExtrudeGeometry
@@ -64,7 +64,7 @@ const hollowboxcsg= hollowConeCSG.subtract(boxcsg)
 
 const cone = CSG.toMesh(hollowboxcsg, new THREE.Matrix4(), mat1);
 cone.receiveShadow = true;
-cone.position.set(0, 0, 3);
+cone.position.set(3, 0, -3);
 cone.rotation.x=Math.PI/2;
 scene.add(cone);
 
@@ -259,10 +259,120 @@ function GetSphere(pRmin, pRmax, pSTheta, pDTheta, pSPhi, pDPhi) {
 
 // Call the function and add the resulting mesh to the scene
 const Sphere = GetSphere(0, 2, Math.PI/4, Math.PI/1.5 , Math.PI/4, Math.PI/1.5 ); //pRmin, pRmax, pSPhi, pDPhi, pSTheta, pDTheta
+Sphere.position.set(-3,0,3)
 scene.add(Sphere);
 
 const SphereHelper = new THREE.BoxHelper(Sphere, 0xffff00);
 scene.add(SphereHelper);
+
+//Create Torus
+function GetTorus(pRmin, pRmax, pRtor, pSPhi, pDPhi) {
+
+    const OuterTorusGeometry = new THREE.TorusGeometry(pRtor, pRmax,30);
+    const innerTorusGeometry = new THREE.TorusGeometry(pRtor, pRmin,30);
+
+    const pieShape = new THREE.Shape();
+    pieShape.absarc(0, 0, pRtor + pRmax, pSPhi, pSPhi + pDPhi, false);
+    pieShape.lineTo(0, 0);
+    const extrusionsettings = { depth: pRmax * 2, bevelEnabled: false };
+    const pieGeometry = new THREE.ExtrudeGeometry(pieShape, extrusionsettings);
+    pieGeometry.translate(0, 0, -pRmax);
+
+    // Convert geometries to CSG objects
+    const OuterTorusCSG = CSG.fromGeometry(OuterTorusGeometry);
+    const innerTorusCSG = CSG.fromGeometry(innerTorusGeometry);
+    const pieCSG = CSG.fromGeometry(pieGeometry);
+
+    let resultCSG = OuterTorusCSG;
+
+    // If a partial cut is needed (not a full circle)
+    if (pSPhi + pDPhi < Math.PI * 2) {
+        resultCSG = resultCSG.intersect(pieCSG); 
+    }
+    resultCSG = resultCSG.subtract(innerTorusCSG);
+
+    // Convert CSG back to a mesh
+    const Torus = CSG.toMesh(resultCSG, new THREE.Matrix4(), mat1); 
+    // Torus.rotateX(Math.PI/2)   
+    return Torus;
+}
+
+const Torus = GetTorus(0.25, 0.75, 1.5, 0, Math.PI*1.67 );  //pRmin, pRmax, pRtor, pSPhi, pDPhi
+Torus.position.set(3,0,3)
+scene.add(Torus)
+
+//Addidng Torus Helper
+const TorusHelper = new THREE.BoxHelper(Torus, 0xffff00);
+scene.add(TorusHelper);
+
+
+// Create an tube with elliptical cross section
+function createEllipseMesh( xSemiAxis, ySemiAxis, Dz) {
+    const material = new THREE.MeshLambertMaterial({ color: 0x00ab12, wireframe:true });
+    const ellipseShape = new THREE.Shape();
+    ellipseShape.ellipse(0, 0,  xSemiAxis, ySemiAxis, 0, Math.PI * 2); // Full ellipse
+
+    // Define extrude settings
+    const extrudeSettings = { depth: Dz, bevelEnabled: false};
+    const geometry = new THREE.ExtrudeGeometry(ellipseShape, extrudeSettings);
+
+    const ellipseMesh = new THREE.Mesh(geometry, material);
+    return ellipseMesh;
+}
+
+// Example usage:
+const Ellipse = createEllipseMesh(2, 1, 4); // xRadius, yRadius, depth
+scene.add(Ellipse);
+ 
+//Adding Elliptical Tube Helper
+const EllipticalTubeHelper= new THREE.BoxHelper(Ellipse,0xffff00);
+scene.add(EllipticalTubeHelper);
+
+
+//Create Trapezoid
+function createTrapezoid(dx1, dx2, dy1, dy2, dz) {
+    const trapezoidShape = new THREE.Shape();
+    const material = new THREE.MeshLambertMaterial({ color: 0x00ab12, wireframe:true });
+
+    // Define the shape based on the trapezoid's coordinates
+    trapezoidShape.moveTo(-dx1, dy1); // Start at the top left
+
+    // Draw the top edge
+    trapezoidShape.lineTo(dx1, dy1); // Top right
+
+    // Draw the right edge
+    trapezoidShape.lineTo(dx2, -dy2); // Bottom right
+
+    // Draw the left edge
+    trapezoidShape.lineTo(-dx2, -dy2); // Bottom left
+
+    // Close the shape
+    trapezoidShape.lineTo(-dx1, dy1); // Back to the top left
+
+    // Define extrude settings
+    const extrudeSettings = {
+        depth: 2 * dz,         // Depth of the extrusion
+        bevelEnabled: false,  // Disables beveling
+    };
+
+    // Create the trapezoid geometry by extruding the shape
+    const geometry = new THREE.ExtrudeGeometry(trapezoidShape, extrudeSettings);
+
+    // Rotate and translate to the correct position
+    geometry.rotateX(Math.PI / 2); // Rotate to align with X-axis
+    geometry.translate(0, dz, 0); // Translate along Y to center the trapezoid
+
+    // Create the mesh
+    const trapezoidMesh = new THREE.Mesh(geometry, material);
+
+    // Return the trapezoid mesh
+    return trapezoidMesh;
+}
+
+// Create the trapezoid and add to the scene
+const trapezoidMesh = createTrapezoid(2, 1, 2, 1, 3);  // dx1, dx2, dy1, dy2, dz
+// scene.add(trapezoidMesh);
+
 
 // Adding grid and axes helpers
 const gridHelper = new THREE.GridHelper( 10, 10 );
@@ -300,7 +410,7 @@ controls.enableRotate = true; // Disable camera rotation
 controls.enableZoom = true; // Allow zooming
 
 // https://threejs.org/docs/#examples/en/controls/DragControls
-const drag = new DragControls([cube, tube, cone,  Sphere], camera, renderer.domElement);
+const drag = new DragControls([cube, tube, cone,  Sphere, Torus, Ellipse], camera, renderer.domElement);
 
 // Disable MapControls while dragging objects
 drag.addEventListener('dragstart', function () {
@@ -320,6 +430,8 @@ drag.addEventListener('drag', function () {
     // sphereHelper.update();
     // coneremainHelper.update();
     SphereHelper.update();
+    TorusHelper.update();
+    EllipticalTubeHelper.update();
 });
 
 // Animation loop
