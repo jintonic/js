@@ -21,10 +21,15 @@ echo "node_modules" > .gitignore
 
 Then add [index.html](index.html), [js/main.js](js/main.js), and commit and push all to github.
 
-## Run the project
+## Run the project in another computer
+
+Open a terminal in the project folder, and
 
 ```sh
+# get into the container
 docker compose run --rm --service-ports sh
+# install dependencies (three, vite, etc.) in ./node_modules
+npm i
 # run vite to serve the webpage
 # --host: set ip address to `0.0.0.0`, which lets the server listen on all network interfaces
 npx vite --host
