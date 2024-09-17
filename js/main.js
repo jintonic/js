@@ -259,7 +259,7 @@ function GetSphere(pRmin, pRmax, pSTheta, pDTheta, pSPhi, pDPhi) {
 
 // Call the function and add the resulting mesh to the scene
 const Sphere = GetSphere(0, 2, Math.PI/4, Math.PI/1.5 , Math.PI/4, Math.PI/1.5 ); //pRmin, pRmax, pSPhi, pDPhi, pSTheta, pDTheta
-Sphere.position.set(-3,0,3)
+Sphere.position.set(-5,0,5)
 scene.add(Sphere);
 
 const SphereHelper = new THREE.BoxHelper(Sphere, 0xffff00);
@@ -268,11 +268,11 @@ scene.add(SphereHelper);
 //Create Torus
 function GetTorus(pRmin, pRmax, pRtor, pSPhi, pDPhi) {
 
-    const OuterTorusGeometry = new THREE.TorusGeometry(pRtor, pRmax,30);
-    const innerTorusGeometry = new THREE.TorusGeometry(pRtor, pRmin,30);
+    const OuterTorusGeometry = new THREE.TorusGeometry(pRtor, pRmax);
+    const innerTorusGeometry = new THREE.TorusGeometry(pRtor, pRmin);
 
     const pieShape = new THREE.Shape();
-    pieShape.absarc(0, 0, pRtor + pRmax, pSPhi, pSPhi + pDPhi, false);
+    pieShape.absarc(0, 0, pRtor + pRmax+0.1, pSPhi, pSPhi + pDPhi, false);
     pieShape.lineTo(0, 0);
     const extrusionsettings = { depth: pRmax * 2, bevelEnabled: false };
     const pieGeometry = new THREE.ExtrudeGeometry(pieShape, extrusionsettings);
@@ -298,7 +298,7 @@ function GetTorus(pRmin, pRmax, pRtor, pSPhi, pDPhi) {
 }
 
 const Torus = GetTorus(0.25, 0.75, 1.5, 0, Math.PI*1.67 );  //pRmin, pRmax, pRtor, pSPhi, pDPhi
-Torus.position.set(3,0,3)
+Torus.position.set(5,0,5)
 scene.add(Torus)
 
 //Addidng Torus Helper
@@ -308,12 +308,12 @@ scene.add(TorusHelper);
 
 // Create an tube with elliptical cross section
 function createEllipseMesh( xSemiAxis, ySemiAxis, Dz) {
-    const material = new THREE.MeshLambertMaterial({ color: 0x00ab12, wireframe:true });
+    const material = new THREE.MeshLambertMaterial({ color: 0x00ab12});
     const ellipseShape = new THREE.Shape();
     ellipseShape.ellipse(0, 0,  xSemiAxis, ySemiAxis, 0, Math.PI * 2); // Full ellipse
 
     // Define extrude settings
-    const extrudeSettings = { depth: Dz, bevelEnabled: false};
+    const extrudeSettings = { depth: Dz, bevelEnabled: false,curveSegments: 200};
     const geometry = new THREE.ExtrudeGeometry(ellipseShape, extrudeSettings);
 
     const ellipseMesh = new THREE.Mesh(geometry, material);
@@ -322,6 +322,7 @@ function createEllipseMesh( xSemiAxis, ySemiAxis, Dz) {
 
 // Example usage:
 const Ellipse = createEllipseMesh(2, 1, 4); // xRadius, yRadius, depth
+Ellipse.position.set(4,0,0)
 scene.add(Ellipse);
  
 //Adding Elliptical Tube Helper
@@ -329,64 +330,146 @@ const EllipticalTubeHelper= new THREE.BoxHelper(Ellipse,0xffff00);
 scene.add(EllipticalTubeHelper);
 
 
-//Create Trapezoid
+//Create Trapezooid
 function createTrapezoid(dx1, dx2, dy1, dy2, dz) {
-    const trapezoidShape = new THREE.Shape();
-    const material = new THREE.MeshLambertMaterial({ color: 0x00ab12, wireframe:true });
+    const geometry = new THREE.BufferGeometry();
+    const material = new THREE.MeshLambertMaterial( { color: 0x00ab12,side: THREE.DoubleSide, wireframe:false  } );
 
-    // Define the shape based on the trapezoid's coordinates
-    trapezoidShape.moveTo(-dx1, dy1); // Start at the top left
+    // Define vertices for the trapezoid (top smaller, bottom larger)
+    const vertices = new Float32Array([
+        // Bottom face (larger rectangle)
+        -dx1, -dy1, -dz,   // Bottom left
+         dx1, -dy1, -dz,   // Bottom right
+         dx1,  dy1, -dz,   // Top right (bottom face)
+        -dx1,  dy1, -dz,   // Top left (bottom face)
 
-    // Draw the top edge
-    trapezoidShape.lineTo(dx1, dy1); // Top right
+        // Top face (smaller rectangle)
+        -dx2, -dy2, dz,    // Bottom left (top face)
+         dx2, -dy2, dz,    // Bottom right (top face)
+         dx2,  dy2, dz,    // Top right (top face)
+        -dx2,  dy2, dz     // Top left (top face)
+    ]);
 
-    // Draw the right edge
-    trapezoidShape.lineTo(dx2, -dy2); // Bottom right
+    // Define indices to form triangles (two triangles per face)
+    const indices = [
+        // Bottom face
+        0, 1, 2,  0, 2, 3,
 
-    // Draw the left edge
-    trapezoidShape.lineTo(-dx2, -dy2); // Bottom left
+        // Top face
+        4, 5, 6,  4, 6, 7,
 
-    // Close the shape
-    trapezoidShape.lineTo(-dx1, dy1); // Back to the top left
+        // Side faces
+        0, 1, 5,  0, 5, 4, // Side 1
+        1, 2, 6,  1, 6, 5, // Side 2
+        2, 3, 7,  2, 7, 6, // Side 3
+        3, 0, 4,  3, 4, 7  // Side 4
+    ];
 
-    // Define extrude settings
-    const extrudeSettings = {
-        depth: 2 * dz,         // Depth of the extrusion
-        bevelEnabled: false,  // Disables beveling
-    };
-
-    // Create the trapezoid geometry by extruding the shape
-    const geometry = new THREE.ExtrudeGeometry(trapezoidShape, extrudeSettings);
-
-    // Rotate and translate to the correct position
-    geometry.rotateX(Math.PI / 2); // Rotate to align with X-axis
-    geometry.translate(0, dz, 0); // Translate along Y to center the trapezoid
-
+    // Set the position and index attributes
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();   // Compute the normals for proper lighting calculations
     // Create the mesh
     const trapezoidMesh = new THREE.Mesh(geometry, material);
 
-    // Return the trapezoid mesh
+    trapezoidMesh.rotation.x = -Math.PI / 2; 
     return trapezoidMesh;
 }
+const Trapezoid = createTrapezoid(2, 0.5, 2, 0.5, 2);  // dx1, dx2, dy1, dy2, dz
+Trapezoid.position.set(0,0,-6);
+scene.add(Trapezoid);
 
-// Create the trapezoid and add to the scene
-const trapezoidMesh = createTrapezoid(2, 1, 2, 1, 3);  // dx1, dx2, dy1, dy2, dz
-// scene.add(trapezoidMesh);
+const TrapezoidHelper=new THREE.BoxHelper(Trapezoid,0xffff00);
+scene.add(TrapezoidHelper);
 
+
+//Create Tetrahedron
+function CreateTetrahedron(anchor, p2, p3, p4, degeneracyFlag = 0) {
+    const geometry = new THREE.BufferGeometry();
+    const material = new THREE.MeshLambertMaterial({ color: 0x00ab12, side: THREE.DoubleSide, wireframe: false }); 
+    let vertices;
+
+    // Check degeneracy based on the flag
+    if (degeneracyFlag === 0) {
+        // No degeneracy - regular solid tetrahedron
+        vertices = new Float32Array([
+            ...anchor, // Vertex 0 (anchor)
+            ...p2,     // Vertex 1 (p2)
+            ...p3,     // Vertex 2 (p3)
+            ...p4      // Vertex 3 (p4)
+        ]);
+    } else if (degeneracyFlag === 1) {
+        // Planar degeneracy - collapse into a 2D plane
+        vertices = new Float32Array([
+            ...anchor, // Vertex 0 (anchor)
+            ...p2,     // Vertex 1 (p2)
+            ...p3,     // Vertex 2 (p3)
+            ...anchor  // Collapse p4 onto the anchor point
+        ]);
+    } else if (degeneracyFlag === 2) {
+        // Line degeneracy - collapse points into a line
+        vertices = new Float32Array([
+            ...anchor, // Vertex 0 (anchor)
+            ...p2,     // Collapse p2 into anchor
+            ...anchor, // Collapse p3 into anchor
+            ...p2      // Vertex 3 (p2)
+        ]);
+    } else if (degeneracyFlag === 3) {
+        // Point degeneracy - all points collapse into one point
+        vertices = new Float32Array([
+            ...anchor, // Vertex 0 (anchor)
+            ...anchor, // All other points collapse into the anchor point
+            ...anchor,
+            ...anchor
+        ]);
+    } else {
+        alert("Unknown degeneracy flag, it ranges from 0 to 3, 0 for normal");
+        return;
+    }
+
+    // Define faces (triangles) for the solid tetrahedron
+    const indices = [
+        0, 1, 2, // First face (Anchor, p2, p3)
+        0, 1, 3, // Second face (Anchor, p2, p4)
+        0, 2, 3, // Third face (Anchor, p3, p4)
+        1, 2, 3  // Base face (p2, p3, p4)
+    ];
+
+    // Set position attribute
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    geometry.setIndex(indices); // Add indices to form triangular faces
+    geometry.computeVertexNormals(); // compute normals for proper shading and lighting
+
+    const tetrahedronMesh = new THREE.Mesh(geometry, material);
+    return tetrahedronMesh;
+}
+
+const Tetrahedron = CreateTetrahedron(
+    [0, 0, 0], // anchor
+    [3, 1, 0], // p2
+    [2,  3, 1], // p3
+    [2, 2, 2], // p4
+    0 // degeneracyFlag
+);
+Tetrahedron.position.set(6,0,-6);
+scene.add(Tetrahedron);
+
+const TetrahedronHelper=new THREE.BoxHelper(Tetrahedron,0xffff00); //Box helper for Tetrahedron
+scene.add(TetrahedronHelper);
 
 // Adding grid and axes helpers
-const gridHelper = new THREE.GridHelper( 10, 10 );
+const gridHelper = new THREE.GridHelper( 20, 20 );
 scene.add( gridHelper );
 
 // // https://threejs.org/docs/#api/en/helpers/AxesHelper
-const axesHelper = new THREE.AxesHelper( 5 );
+const axesHelper = new THREE.AxesHelper( 10 );
 scene.add( axesHelper );
 
 // Setting up the camera
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight );
-camera.position.x = 5;
-camera.position.y = 5;
-camera.position.z = 5;
+camera.position.x = 10;
+camera.position.y = 10;
+camera.position.z = 10;
 
 // https://threejs.org/examples/#misc_controls_drag
 const light = new THREE.SpotLight( 0xffffff, 5 ); // intensity cannot be too bright
@@ -410,7 +493,7 @@ controls.enableRotate = true; // Disable camera rotation
 controls.enableZoom = true; // Allow zooming
 
 // https://threejs.org/docs/#examples/en/controls/DragControls
-const drag = new DragControls([cube, tube, cone,  Sphere, Torus, Ellipse], camera, renderer.domElement);
+const drag = new DragControls([cube, tube, cone,  Sphere, Torus, Ellipse, Trapezoid,Tetrahedron], camera, renderer.domElement);
 
 // Disable MapControls while dragging objects
 drag.addEventListener('dragstart', function () {
@@ -432,6 +515,8 @@ drag.addEventListener('drag', function () {
     SphereHelper.update();
     TorusHelper.update();
     EllipticalTubeHelper.update();
+    TrapezoidHelper.update();
+    TetrahedronHelper.update();
 });
 
 // Animation loop
