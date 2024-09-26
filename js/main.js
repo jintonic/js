@@ -333,7 +333,7 @@ scene.add(EllipticalTubeHelper);
 //Create Trapezooid
 function createTrapezoid(dx1, dx2, dy1, dy2, dz) {
     const geometry = new THREE.BufferGeometry();
-    const material = new THREE.MeshLambertMaterial( { color: 0x00ab12,side: THREE.DoubleSide, wireframe:false  } );
+    const material = new THREE.MeshLambertMaterial( { color: 0x00ab12,side: THREE.DoubleSide, wireframe:false , flatShading: true    } );
 
     // Define vertices for the trapezoid (top smaller, bottom larger)
     const vertices = new Float32Array([
@@ -369,10 +369,15 @@ function createTrapezoid(dx1, dx2, dy1, dy2, dz) {
     geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
     geometry.setIndex(indices);
     geometry.computeVertexNormals();   // Compute the normals for proper lighting calculations
-    // Create the mesh
-    const trapezoidMesh = new THREE.Mesh(geometry, material);
+    
+    // const box=new THREE.BoxGeometry(4,6,3);
+    // const boxcsg=CSG.fromGeometry(box);
+    // const gCSG=CSG.fromGeometry(geometry);
 
-    trapezoidMesh.rotation.x = -Math.PI / 2; 
+    // const fcsg=gCSG.subtract(boxcsg)
+    // const trapezoidMesh = CSG.toMesh(fcsg, new THREE.Matrix4(), mat1); 
+
+    const trapezoidMesh = new THREE.Mesh(geometry, material);
     return trapezoidMesh;
 }
 const Trapezoid = createTrapezoid(2, 0.5, 2, 0.5, 2);  // dx1, dx2, dy1, dy2, dz
@@ -386,7 +391,7 @@ scene.add(TrapezoidHelper);
 //Create Tetrahedron
 function CreateTetrahedron(anchor, p2, p3, p4, degeneracyFlag = 0) {
     const geometry = new THREE.BufferGeometry();
-    const material = new THREE.MeshLambertMaterial({ color: 0x00ab12, side: THREE.DoubleSide, wireframe: false }); 
+    const material = new THREE.MeshLambertMaterial({ color: 0x00ab12, side: THREE.DoubleSide, wireframe: false, flatShading: true  }); 
     let vertices;
 
     // Check degeneracy based on the flag
@@ -457,6 +462,148 @@ scene.add(Tetrahedron);
 const TetrahedronHelper=new THREE.BoxHelper(Tetrahedron,0xffff00); //Box helper for Tetrahedron
 scene.add(TetrahedronHelper);
 
+
+//Create EllipsoidGeometry
+function createEllipsoidGeometry(xSemiAxis, ySemiAxis, zSemiAxis, zBottomCut, pzTopCut) {
+    const material = new THREE.MeshLambertMaterial({ color: 0x00ab12});
+    const EllipsoidGeometry = new THREE.SphereGeometry(1);
+
+    EllipsoidGeometry.scale(xSemiAxis, ySemiAxis, zSemiAxis);
+    const TopBoxGeometry = new THREE.BoxGeometry(xSemiAxis*2,ySemiAxis*2, pzTopCut*2); //z,y,x
+    TopBoxGeometry.translate(0,0,zSemiAxis);
+    const BottomBoxGeometry = new THREE.BoxGeometry(xSemiAxis*2,ySemiAxis*2, zBottomCut*2); //z,y,x
+    BottomBoxGeometry.translate(0,0,-zSemiAxis);
+
+    const TopBoxCSG= CSG.fromGeometry(TopBoxGeometry);
+    const BottomBoxCSG = CSG.fromGeometry(BottomBoxGeometry);
+    const EllipsoidCSG=CSG.fromGeometry(EllipsoidGeometry)
+    let FinalCSG=EllipsoidCSG;
+    if (pzTopCut>0){
+        FinalCSG=EllipsoidCSG.subtract(TopBoxCSG);
+    }
+    if (zBottomCut>0){
+        FinalCSG=EllipsoidCSG.subtract(BottomBoxCSG);
+    }
+    const ellipsoidMesh = CSG.toMesh(FinalCSG, new THREE.Matrix4(), material);
+    return ellipsoidMesh;
+} 
+
+const Ellipsoid = createEllipsoidGeometry(3, 2, 3,0,1); // xSemiAxis, ySemiAxis, zSemiAxis, zBottomCut, pzTopCut
+// Ellipsoid.position.set(-6,0,-6);
+scene.add(Ellipsoid);
+
+const EllipsoidBoxHelper=new THREE.BoxHelper(Ellipsoid,0xffff00);
+scene.add(EllipsoidBoxHelper)
+
+
+// Create EllipticalCone
+function createEllipticalCone(xRadius1, yRadius1, xRadius2, yRadius2, height ) {
+    let radialSegments=200;
+    const geometry = new THREE.BufferGeometry();
+    
+    // Change the material to use flat shading
+    const material = new THREE.MeshLambertMaterial({ 
+        color: 0x00ab12, 
+        side: THREE.DoubleSide,
+        // wireframe: true,
+        flatShading: true 
+    });
+
+    const vertices = [];
+    const indices = [];
+    const normals = [];
+
+    // Bottom ellipse vertices
+    for (let i = 0; i <= radialSegments; i++) {
+        const angle = (i / radialSegments) * Math.PI * 2;
+        const x = xRadius1 * Math.cos(angle);
+        const y = yRadius1 * Math.sin(angle);
+        vertices.push(x, y, 0);  // Bottom ellipse at z = 0
+    }
+
+    // Top ellipse vertices
+    for (let i = 0; i <= radialSegments; i++) {
+        const angle = (i / radialSegments) * Math.PI * 2;
+        const x = xRadius2 * Math.cos(angle);
+        const y = yRadius2 * Math.sin(angle);
+        vertices.push(x, y, height); // Top ellipse at z = height
+    }
+
+    // Side faces
+    for (let i = 0; i < radialSegments; i++) {
+        const p1 = i;
+        const p2 = (i + 1) % radialSegments;
+        const p3 = i + radialSegments + 1;
+        const p4 = (i + 1) % radialSegments + radialSegments + 1;
+
+        // Two triangles for each segment (sharp edge effect)
+        indices.push(p1, p2, p3);
+        indices.push(p2, p4, p3);
+    }
+
+    // Bottom face (base of the cone)
+    const bottomCenterIndex = vertices.length / 3;
+    vertices.push(0, 0, 0);  // Bottom center point
+
+    for (let i = 0; i < radialSegments; i++) {
+        const p1 = i;
+        const p2 = (i + 1) % radialSegments;
+        indices.push(bottomCenterIndex, p1, p2);
+    }
+
+    // Top face
+    const topCenterIndex = vertices.length / 3;
+    vertices.push(0, 0, height);  // Top center point
+
+    for (let i = 0; i < radialSegments; i++) {
+        const p1 = i + radialSegments + 1;
+        const p2 = (i + 1) % radialSegments + radialSegments + 1;
+        indices.push(topCenterIndex, p1, p2);
+    }
+
+    // Set attributes and create mesh
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setIndex(indices);
+    
+    // With flat shading, we don't need to recalculate normals
+    geometry.computeVertexNormals(); // No need for smooth normals
+    
+    const ellipticalCone = new THREE.Mesh(geometry, material);
+    return ellipticalCone;
+}
+
+const EllipticalCone = createEllipticalCone(3,4,1,2,4);  //xRadius1, yRadius1, xRadius2, yRadius2, height
+scene.add(EllipticalCone);
+
+const EllipticalConeHelper=new THREE.BoxHelper(EllipticalCone,0xffff00); //Box helper for Tetrahedron
+scene.add(EllipticalConeHelper);
+
+
+// / Create EllipticalCone: Simple one: 
+// function createEllipticalCone(xSemiAxis, ySemiAxis, zHeight, zTopCut) {
+    // const ConeGeometry = new THREE.CylinderGeometry(0.0000001,1,zHeight,64);
+
+//     // Create a material for the cone
+//     const material = new THREE.MeshLambertMaterial({ color: 0x00ab12, side: THREE.DoubleSide,flatShading: true });
+//     ConeGeometry.scale.set(xSemiAxis, ySemiAxis, 1);
+
+//     const TopBoxGeometry = new THREE.BoxGeometry(xSemiAxis*2,ySemiAxis*2, zTopCut*2); 
+//     TopBoxGeometry.translate(0,0,zHeight/2);
+
+//     const TopBoxCSG= CSG.fromGeometry(TopBoxGeometry);
+//     const ConeCSG = CSG.fromGeometry(ConeGeometry);
+//     let FinalCSG=ConeCSG;
+//     if (zTopCut>0){
+//         FinalCSG=ConeCSG.subtract(TopBoxCSG);
+//     }
+//     const ellipticalCone = CSG.toMesh(FinalCSG, new THREE.Matrix4(), material);;
+//     return ellipticalCone;
+// }
+
+// // Usage Example: Create the elliptical cone
+// const EllipticalCone = createEllipticalCone(30 / 75, 60 / 75, 4, 0);  // xSemiAxis, ySemiAxis, zHeight, zTopCut
+// scene.add(EllipticalCone);
+
 // Adding grid and axes helpers
 const gridHelper = new THREE.GridHelper( 20, 20 );
 scene.add( gridHelper );
@@ -493,7 +640,7 @@ controls.enableRotate = true; // Disable camera rotation
 controls.enableZoom = true; // Allow zooming
 
 // https://threejs.org/docs/#examples/en/controls/DragControls
-const drag = new DragControls([cube, tube, cone,  Sphere, Torus, Ellipse, Trapezoid,Tetrahedron], camera, renderer.domElement);
+const drag = new DragControls([cube, tube, cone,  Sphere, Torus, Ellipse, Trapezoid,Tetrahedron,Ellipsoid], camera, renderer.domElement);
 
 // Disable MapControls while dragging objects
 drag.addEventListener('dragstart', function () {
@@ -517,6 +664,8 @@ drag.addEventListener('drag', function () {
     EllipticalTubeHelper.update();
     TrapezoidHelper.update();
     TetrahedronHelper.update();
+    EllipsoidBoxHelper.update();
+    EllipticalConeHelper.update();
 });
 
 // Animation loop
